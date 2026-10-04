@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+{% set show_all = false %}
+{% include '_week_nav.html' %}
+
+{% set level = 'over' if s.pct >= 100 else ('warn' if s.pct >= 75 else 'ok') %}
+<section class="card hero {{ level }}">
+  <div class="hero-top">
+    <div>
+      <div class="label">Spent this week</div>
+      <div class="big">{{ s.total|money }} <span class="muted">/ {{ s.budget|money }}</span></div>
+    </div>
+    <div class="right">
+      {% if s.over_budget %}
+        <div class="label">Over budget by</div>
+        <div class="big neg">{{ (-s.remaining)|money }}</div>
+      {% else %}
+        <div class="label">Remaining</div>
+        <div class="big pos">{{ s.remaining|money }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="progress"><div class="bar" style="width: {{ [s.pct, 100]|min }}%"></div></div>
+  <div class="hero-foot muted">
+    {{ '%.0f'|format(s.pct) }}% used · {{ s.transaction_count }} transactions ·
+    {% if s.days_left %}{{ s.days_left }} day{{ 's' if s.days_left != 1 }} left{% else %}week closed{% endif %}
+    {% if last_synced %} · last synced {{ last_synced.astimezone().strftime('%b %-d, %-I:%M %p') }}{% endif %}
+  </div>
+</section>
+
+<section class="stats">
+  <div class="card stat">
+    <div class="label">Daily average</div>
+    <div class="value">{{ s.avg_per_day|money }}</div>
+    <div class="muted small">over {{ s.days_elapsed }} day{{ 's' if s.days_elapsed != 1 }}</div>
+  </div>
+  {% if s.days_left %}
+  <div class="card stat">
+    <div class="label">Safe to spend / day</div>
+    <div class="value {{ 'neg' if s.over_budget }}">{{ s.per_day_left|money }}</div>
+    <div class="muted small">for the remaining {{ s.days_left }} day{{ 's' if s.days_left != 1 }}</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Projected week total</div>
+    <div class="value {{ 'neg' if s.projected > s.budget }}">{{ s.projected|money }}</div>
+    <div class="muted small">at current pace</div>
+  </div>
+  {% endif %}
+  <div class="card stat">
+    <div class="label">vs. last week</div>
+    {% set diff = s.total - prev.total %}
+    <div class="value {{ 'neg' if diff > 0 else 'pos' }}">{{ '+' if diff > 0 }}{{ diff|money }}</div>
+    <div class="muted small">last week: {{ prev.total|money }}</div>
+  </div>
+  <div class="card stat">
+    <div class="label">8-week average</div>
+    <div class="value">{{ avg_week|money }}</div>
+    <div class="muted small">previous 7 weeks</div>
+  </div>
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <h3>Biggest expenses</h3>
+    {% if s.top_expenses %}
+    <ol class="list">
+      {% for t in s.top_expenses %}
+      <li>
+        <div>
+          <div>{{ t.merchant_name or t.name }}{% if t.pending %} <span class="pill small">pending</span>{% endif %}</div>
+          <div class="muted small">{{ t.date.strftime('%a %b %-d') }} · {{ t.category_primary|category }} · {{ t.institution_name or '' }}</div>
+        </div>
+        <div class="amt">{{ t.amount|money }}</div>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}<p class="muted">No spending yet this week. 🎉</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <h3>By category</h3>
+    {% if s.categories %}
+    <ul class="bars">
+      {% for cat, amt in s.categories %}
+      <li>
+        <div class="bar-label"><span>{{ cat|category }}</span><span>{{ amt|money }}</span></div>
+        <div class="hbar"><div style="width: {{ (amt / s.categories[0][1] * 100)|round(1) }}%"></div></div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Nothing to show.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Spending by day{% if s.biggest_day %} <span class="muted small">· heaviest: {{ s.biggest_day }}</span>{% endif %}</h3>
+    <div class="columns">
+      {% for d in s.daily %}
+      <div class="col {{ 'future' if d.date > today }} {{ 'today' if d.date == today }}" title="{{ d.date.strftime('%b %-d') }}: {{ d.amount|money }}">
+        <div class="col-amt small">{{ d.amount|money if d.amount else '' }}</div>
+        <div class="col-bar"><div style="height: {{ ([d.amount, 0]|max / max_daily * 100)|round(1) }}%"></div></div>
+        <div class="col-day">{{ d.day }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Top merchants</h3>
+    {% if s.merchants %}
+    <ol class="list">
+      {% for name, amt, n in s.merchants %}
+      <li><div>{{ name }} <span class="muted small">× {{ n }}</span></div><div class="amt">{{ amt|money }}</div></li>
+      {% endfor %}
+    </ol>
+    {% else %}<p class="muted">Nothing to show.</p>{% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <h3>Last {{ history|length }} weeks</h3>
+  <div class="columns tall">
+    {% for h in history %}
+    <a class="col {{ 'over' if h.total > s.budget }} {{ 'today' if h.start == s.start }}" href="{{ url_for('index', week=h.start.isoformat()) }}" title="Week of {{ h.start.strftime('%b %-d') }}: {{ h.total|money }}">
+      <div class="col-amt small">{{ h.total|money }}</div>
+      <div class="col-bar">
+        <div class="budget-line" style="bottom: {{ (s.budget / max_week * 100)|round(1) }}%"></div>
+        <div style="height: {{ ([h.total, 0]|max / max_week * 100)|round(1) }}%"></div>
+      </div>
+      <div class="col-day">{{ h.start.strftime('%b %-d') }}</div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<p class="center"><a class="btn" href="{{ url_for('transactions', week=s.start.isoformat()) }}">See all transactions for this week →</a></p>
+{% endblock %}

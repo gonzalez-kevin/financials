@@ -1,0 +1,13 @@
+<div class="week-nav">
+  <a class="btn ghost" href="{{ url_for(request.endpoint, week=prev_week.isoformat(), **({'all': '1'} if show_all else {})) }}">← Prev</a>
+  <div class="week-label">
+    <strong>{{ s.start.strftime('%a %b %-d') }} – {{ s.end.strftime('%a %b %-d, %Y') }}</strong>
+    {% if is_current %}<span class="pill">This week</span>{% endif %}
+  </div>
+  {% if not is_current %}
+    <a class="btn ghost" href="{{ url_for(request.endpoint, week=next_week.isoformat(), **({'all': '1'} if show_all else {})) }}">Next →</a>
+    <a class="btn ghost" href="{{ url_for(request.endpoint, **({'all': '1'} if show_all else {})) }}">Today</a>
+  {% else %}
+    <span class="btn ghost disabled">Next →</span>
+  {% endif %}
+</div>

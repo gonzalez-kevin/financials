@@ -1,0 +1,9 @@
+# Files never uploaded to Cloud Build (keeps secrets out of the build bucket).
+.env
+**/.env
+connections/
+.venv/
+.idea/
+.git/
+**/__pycache__/
+deploy/

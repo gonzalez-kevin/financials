@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Transactions{% endblock %}
+{% block content %}
+{% include '_week_nav.html' %}
+
+<section class="card">
+  <div class="table-head">
+    <div>
+      <strong>{{ s.total|money }}</strong> spent of {{ s.budget|money }}
+      <span class="muted">· {{ txs|length }} shown{% if hidden_count %}, {{ hidden_count }} transfers/payments/income hidden{% endif %}</span>
+    </div>
+    <div class="actions">
+      {% if show_all %}
+        <a class="btn ghost" href="{{ url_for('transactions', week=s.start.isoformat()) }}">Hide transfers & income</a>
+      {% else %}
+        <a class="btn ghost" href="{{ url_for('transactions', week=s.start.isoformat(), all='1') }}">Show everything</a>
+      {% endif %}
+      <a class="btn ghost" href="{{ url_for('export', start=s.start.isoformat(), end=s.end.isoformat()) }}">⬇ CSV</a>
+    </div>
+  </div>
+
+  {% if txs %}
+  <table class="tx">
+    <thead>
+      <tr><th>Date</th><th>Description</th><th>Category</th><th>Account</th><th class="num">Amount</th></tr>
+    </thead>
+    <tbody>
+      {% for t in txs %}
+      <tr class="{{ 'excluded' if not counts(t) }} {{ 'credit' if t.amount < 0 }}">
+        <td class="nowrap">{{ t.date.strftime('%a %b %-d') }}</td>
+        <td>
+          {{ t.merchant_name or t.name }}
+          {% if t.pending %}<span class="pill small">pending</span>{% endif %}
+          {% if not counts(t) %}<span class="pill small grey">not counted</span>{% endif %}
+          {% if t.merchant_name and t.merchant_name != t.name %}<div class="muted small">{{ t.name }}</div>{% endif %}
+        </td>
+        <td>{{ t.category_primary|category }}<div class="muted small">{{ (t.category_detailed or '')|replace((t.category_primary or '') ~ '_', '')|category if t.category_detailed }}</div></td>
+        <td class="nowrap">{{ t.institution_name or '' }}<div class="muted small">{{ t.account_name or '' }}{% if t.account_mask %} ••{{ t.account_mask }}{% endif %}</div></td>
+        <td class="num nowrap">{{ (-t.amount)|money if t.amount < 0 else t.amount|money }}{% if t.amount < 0 %} <span class="muted small">credit</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="muted">No transactions this week.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,10 @@
+# Never ship secrets or the local Plaid Quickstart server in the image.
+.env
+**/.env
+connections/
+.venv/
+.idea/
+.git/
+**/__pycache__/
+**/test_*.py
+deploy/
