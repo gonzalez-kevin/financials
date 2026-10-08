@@ -152,6 +152,9 @@ def monthly_by_category(transactions, months, excluded=DEFAULT_EXCLUDED_CATEGORI
         'totals': totals,
         'total': total,
         'average': total / len(months) if months else Decimal('0'),
+    }
+
+
 # Plaid account types: depository/investment balances are assets; credit/loan balances are amounts owed.
 ACCOUNT_GROUPS = (('depository', 'Cash'), ('investment', 'Investments'), ('credit', 'Credit cards'),
                   ('loan', 'Loans'), ('other', 'Other'))

@@ -3,9 +3,9 @@ from datetime import date
 from decimal import Decimal
 
 from dashboard.finance import (
-    OTHER_SPEND, add_months, monthly_by_category, summarize_week, week_start, weekly_totals,
+    OTHER_SPEND, add_months, credit_limit, monthly_by_category, summarize_accounts, summarize_week,
+    week_start, weekly_totals,
 )
-from dashboard.finance import credit_limit, summarize_accounts, summarize_week, week_start, weekly_totals
 
 
 def tx(d, amount, cat='FOOD_AND_DRINK', name='Shop', merchant=None):
@@ -101,6 +101,7 @@ class MonthlyTest(unittest.TestCase):
         m = monthly_by_category([], [date(2026, 9, 1), date(2026, 10, 1)])
         self.assertEqual(m['series'], [])
         self.assertEqual(m['totals'], [Decimal('0'), Decimal('0')])
+
 
 def acct(type_, current, available=None, limit=None, name='Acct', subtype=None):
     return {'type': type_, 'subtype': subtype, 'name': name, 'current_balance': Decimal(str(current)),

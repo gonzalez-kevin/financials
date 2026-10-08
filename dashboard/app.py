@@ -25,8 +25,8 @@ sys.path.insert(0, str(ROOT))
 
 import main as sync  # noqa: E402  (reuses DB connection + Plaid sync logic)
 from dashboard.finance import (  # noqa: E402
-    DEFAULT_EXCLUDED_CATEGORIES, counts_toward_budget, summarize_accounts, summarize_week,
-    week_end, week_start, weekly_totals,
+    DEFAULT_EXCLUDED_CATEGORIES, OTHER_SPEND, add_months, counts_toward_budget, month_start,
+    monthly_by_category, summarize_accounts, summarize_week, week_end, week_start, weekly_totals,
 )
 
 WEEKLY_BUDGET = Decimal(os.getenv('WEEKLY_BUDGET', '1200'))
