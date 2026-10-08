@@ -41,7 +41,8 @@ served by gunicorn in Docker.
   - `summarize_accounts(accounts)` groups accounts by Plaid type and returns net worth, cash and credit card
     balances owed. Limits and utilization are deliberately not shown (some cards have no hard limit).
   - `DEFAULT_EXCLUDED_CATEGORIES`, which lists Plaid PFC primary values for money movement such as
-    transfers, loan payments, income and `OTHER`.
+    transfers, loan payments and disbursements, income and `OTHER`. The `EXCLUDED_CATEGORIES` env
+    var replaces this list entirely, so keep any deployed value in sync with it.
 - `dashboard/app.py`: the Flask `app`.
   - Config: `WEEKLY_BUDGET` (default 1200), `EXCLUDED_CATEGORIES` (env CSV), `HISTORY_WEEKS = 8` and
     `HISTORY_MONTHS = 12`.
@@ -90,7 +91,7 @@ There is no deploy script; everything is set up manually in the Google Cloud Con
 
 ## Commands (run from repo root)
 ```bash
-.venv/bin/python -m unittest dashboard.test_finance jobs.test_daily   # tests: 17, no DB/network needed
+.venv/bin/python -m unittest dashboard.test_finance jobs.test_daily   # tests: 18, no DB/network needed
 .venv/bin/python main.py                                              # sync
 .venv/bin/python -m dashboard.app                                     # http://127.0.0.1:5050
 .venv/bin/python -m jobs.daily --dry-run                              # print email
@@ -136,7 +137,6 @@ Env vars are loaded from `connections/.env` and then the root `.env` (both git-i
 - Keep `finance.py` pure, with no DB or Flask imports.
 
 ## Known quirks
-- `DEFAULT_EXCLUDED_CATEGORIES` lists `'LOAN_PAYMENTS'` twice. This is harmless.
 - `main.py` creates the Plaid client at import time. Importing it without credentials works, but API calls
   will fail.
 - `jobs.daily` imports `dashboard.app`, which creates the Flask app on import.

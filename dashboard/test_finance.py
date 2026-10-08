@@ -107,6 +107,12 @@ class MonthlyTest(unittest.TestCase):
         self.assertEqual(m['other'], [{'category': 'TRAVEL', 'amounts': [Decimal('0'), Decimal('-40')],
                                        'total': Decimal('-40')}])
 
+    def test_loan_disbursements_are_not_spending(self):
+        m = monthly_by_category([tx(date(2026, 9, 5), 50), tx(date(2026, 9, 6), -2000, cat='LOAN_DISBURSEMENTS')],
+                                [date(2026, 9, 1)])
+        self.assertEqual(m['totals'], [Decimal('50')])
+        self.assertEqual(m['other'], [])
+
     def test_empty(self):
         m = monthly_by_category([], [date(2026, 9, 1), date(2026, 10, 1)])
         self.assertEqual(m['series'], [])
