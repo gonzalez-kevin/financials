@@ -36,7 +36,8 @@ served by gunicorn in Docker.
     categories, merchants, top expenses, projection and related fields.
   - `weekly_totals`.
   - `month_start`, `add_months` and `monthly_by_category(txs, months, excluded, top_n=7)`, which returns
-    per-category monthly series (smaller categories fold into `OTHER_SPEND`), monthly totals and an average.
+    per-category monthly series (smaller categories fold into `OTHER_SPEND` and are listed under `other`),
+    monthly totals and an average.
   - `summarize_accounts(accounts)` groups accounts by Plaid type and returns net worth, cash and credit card
     balances owed. Limits and utilization are deliberately not shown (some cards have no hard limit).
   - `DEFAULT_EXCLUDED_CATEGORIES`, which lists Plaid PFC primary values for money movement such as
@@ -89,7 +90,7 @@ There is no deploy script; everything is set up manually in the Google Cloud Con
 
 ## Commands (run from repo root)
 ```bash
-.venv/bin/python -m unittest dashboard.test_finance jobs.test_daily   # tests: 16, no DB/network needed
+.venv/bin/python -m unittest dashboard.test_finance jobs.test_daily   # tests: 17, no DB/network needed
 .venv/bin/python main.py                                              # sync
 .venv/bin/python -m dashboard.app                                     # http://127.0.0.1:5050
 .venv/bin/python -m jobs.daily --dry-run                              # print email

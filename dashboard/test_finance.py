@@ -96,10 +96,21 @@ class MonthlyTest(unittest.TestCase):
         self.assertEqual([(s['category'], s['total']) for s in m['series']],
                          [('A', Decimal('30')), (OTHER_SPEND, Decimal('25'))])
         self.assertEqual(m['totals'], [Decimal('55')])
+        self.assertEqual([(o['category'], o['total']) for o in m['other']], [('B', Decimal('20')), ('C', Decimal('5'))])
+
+    def test_net_credit_category_is_listed_under_other(self):
+        months = [date(2026, 8, 1), date(2026, 9, 1)]
+        txs = [tx(date(2026, 8, 5), 100), tx(date(2026, 9, 5), -40, cat='TRAVEL')]   # e.g. a statement credit
+        m = monthly_by_category(txs, months)
+        self.assertEqual(m['series'][-1], {'category': OTHER_SPEND, 'amounts': [Decimal('0'), Decimal('-40')],
+                                           'total': Decimal('-40')})
+        self.assertEqual(m['other'], [{'category': 'TRAVEL', 'amounts': [Decimal('0'), Decimal('-40')],
+                                       'total': Decimal('-40')}])
 
     def test_empty(self):
         m = monthly_by_category([], [date(2026, 9, 1), date(2026, 10, 1)])
         self.assertEqual(m['series'], [])
+        self.assertEqual(m['other'], [])
         self.assertEqual(m['totals'], [Decimal('0'), Decimal('0')])
 
 

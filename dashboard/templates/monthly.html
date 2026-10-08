@@ -58,6 +58,28 @@
   </div>
 </section>
 
+{% if m.other %}
+<section class="card">
+  <h3>What's in "All other"</h3>
+  <p class="muted small">Smaller categories, plus any category that came out as a net credit over the 12 months (refunds or statement credits bigger than the spending). Negative amounts are credits.</p>
+  <div class="table-scroll">
+    <table class="tx">
+      <thead><tr><th>Month</th>{% for o in m.other %}<th class="num">{{ o.category|category }}</th>{% endfor %}<th class="num">All other</th></tr></thead>
+      <tbody>
+        {% for month in m.months %}{% set i = loop.index0 %}
+        <tr>
+          <td class="nowrap">{{ month.strftime('%b %Y') }}</td>
+          {% for o in m.other %}<td class="num {{ 'pos' if o.amounts[i] < 0 }}">{{ o.amounts[i]|money }}</td>{% endfor %}
+          <td class="num {{ 'pos' if m.series[-1].amounts[i] < 0 }}"><strong>{{ m.series[-1].amounts[i]|money }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><td><strong>Total</strong></td>{% for o in m.other %}<td class="num {{ 'pos' if o.total < 0 }}"><strong>{{ o.total|money }}</strong></td>{% endfor %}<td class="num {{ 'pos' if m.series[-1].total < 0 }}"><strong>{{ m.series[-1].total|money }}</strong></td></tr></tfoot>
+    </table>
+  </div>
+</section>
+{% endif %}
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const data = {{ chart|tojson }};

@@ -127,7 +127,8 @@ def add_months(d: date, n: int) -> date:
 def monthly_by_category(transactions, months, excluded=DEFAULT_EXCLUDED_CATEGORIES, top_n: int = 7) -> dict:
     """Net spend per category per month for each month start in ``months``.
 
-    The ``top_n`` categories by total keep their own series; the rest fold into ``OTHER_SPEND``.
+    The ``top_n`` categories by total keep their own series; the rest (including any category whose
+    net is a credit) fold into ``OTHER_SPEND`` and are also listed under ``other``.
     """
     index = {m: i for i, m in enumerate(months)}
     by_cat = defaultdict(lambda: [Decimal('0')] * len(months))
@@ -139,16 +140,17 @@ def monthly_by_category(transactions, months, excluded=DEFAULT_EXCLUDED_CATEGORI
 
     ranked = sorted(by_cat.items(), key=lambda kv: sum(kv[1]), reverse=True)
     top = [(c, v) for c, v in ranked if sum(v) > 0][:top_n]
-    rest = [v for c, v in ranked if c not in dict(top)]
+    rest = [(c, v) for c, v in ranked if c not in dict(top)]
     series = list(top)
     if rest:
-        series.append((OTHER_SPEND, [sum(col, Decimal('0')) for col in zip(*rest)]))
+        series.append((OTHER_SPEND, [sum(col, Decimal('0')) for col in zip(*(v for _, v in rest))]))
 
     totals = [sum(col, Decimal('0')) for col in zip(*by_cat.values())] if by_cat else [Decimal('0')] * len(months)
     total = sum(totals, Decimal('0'))
     return {
         'months': list(months),
         'series': [{'category': c, 'amounts': v, 'total': sum(v, Decimal('0'))} for c, v in series],
+        'other': [{'category': c, 'amounts': v, 'total': sum(v, Decimal('0'))} for c, v in rest],
         'totals': totals,
         'total': total,
         'average': total / len(months) if months else Decimal('0'),
