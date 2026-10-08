@@ -64,9 +64,11 @@ def init_db(conn):
         subtype TEXT,
         current_balance NUMERIC(12, 2),
         available_balance NUMERIC(12, 2),
+        credit_limit NUMERIC(12, 2),
         iso_currency_code TEXT,
         updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
     );
+    ALTER TABLE accounts ADD COLUMN IF NOT EXISTS credit_limit NUMERIC(12, 2);
 
     CREATE TABLE IF NOT EXISTS transactions (
         id TEXT PRIMARY KEY,
@@ -110,8 +112,8 @@ def sync_accounts(conn, item_id: str, access_token: str, institution_name: str =
     res = plaid_client.accounts_get(req).to_dict()
 
     upsert_sql = """
-        INSERT INTO accounts (id, item_id, name, mask, type, subtype, current_balance, available_balance, iso_currency_code, updated_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        INSERT INTO accounts (id, item_id, name, mask, type, subtype, current_balance, available_balance, credit_limit, iso_currency_code, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
         ON CONFLICT (id) DO UPDATE SET
             item_id = EXCLUDED.item_id,
             name = EXCLUDED.name,
@@ -120,6 +122,7 @@ def sync_accounts(conn, item_id: str, access_token: str, institution_name: str =
             subtype = EXCLUDED.subtype,
             current_balance = EXCLUDED.current_balance,
             available_balance = EXCLUDED.available_balance,
+            credit_limit = EXCLUDED.credit_limit,
             iso_currency_code = EXCLUDED.iso_currency_code,
             updated_at = NOW();
     """
@@ -136,6 +139,7 @@ def sync_accounts(conn, item_id: str, access_token: str, institution_name: str =
             str(acc.get('subtype')) if acc.get('subtype') else None,
             balances.get('current'),
             balances.get('available'),
+            balances.get('limit'),
             balances.get('iso_currency_code') or balances.get('unofficial_currency_code')
         ))
 

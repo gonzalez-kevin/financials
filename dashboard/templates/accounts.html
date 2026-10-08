@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Accounts{% endblock %}
+{% block content %}
+<section class="card hero net-worth">
+  <div class="hero-top">
+    <div>
+      <div class="label">Net worth</div>
+      <div class="big {{ 'neg' if a.net_worth < 0 }}">{{ a.net_worth|money }}</div>
+    </div>
+    <div class="right">
+      <div class="label">Assets / owed</div>
+      <div class="big"><span class="pos">{{ a.assets|money }}</span> <span class="muted">/ {{ a.liabilities|money }}</span></div>
+    </div>
+  </div>
+  <div class="hero-foot muted">
+    {{ a.account_count }} account{{ 's' if a.account_count != 1 }}
+    {% if last_synced %} · last synced {{ last_synced.astimezone().strftime('%b %-d, %-I:%M %p') }}{% endif %}
+  </div>
+</section>
+
+<section class="stats">
+  <div class="card stat">
+    <div class="label">Cash</div>
+    <div class="value pos">{{ a.cash|money }}</div>
+    <div class="muted small">checking and savings</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Credit card balances</div>
+    <div class="value neg">{{ a.credit_owed|money }}</div>
+    <div class="muted small">cash after paying cards: {{ (a.cash - a.credit_owed)|money }}</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Credit used</div>
+    {% if a.utilization is not none %}
+    {% set level = 'over' if a.utilization >= 30 else ('warn' if a.utilization >= 10 else 'ok') %}
+    <div class="value">{{ '%.0f'|format(a.utilization) }}%</div>
+    <div class="progress thin {{ level }}"><div class="bar" style="width: {{ [a.utilization, 100]|min }}%"></div></div>
+    <div class="muted small">{{ a.credit_used|money }} of {{ a.credit_limit|money }} · {{ a.credit_available|money }} available</div>
+    {% else %}
+    <div class="value muted">n/a</div>
+    <div class="muted small">no credit limits reported</div>
+    {% endif %}
+  </div>
+</section>
+
+{% for g in a.groups %}
+<section class="card">
+  <div class="table-head">
+    <h3>{{ g.label }}</h3>
+    <strong class="{{ 'neg' if g.liability else 'pos' }}">{{ g.total|money }}</strong>
+  </div>
+  <div class="scroll-x"><table class="tx">
+    <thead>
+      <tr><th>Account</th><th class="inst">Institution</th>
+        {% if g.type == 'credit' %}<th>Credit used</th>{% else %}<th class="num">Available</th>{% endif %}
+        <th class="num">{{ 'Owed' if g.liability else 'Balance' }}</th></tr>
+    </thead>
+    <tbody>
+      {% for acct in g.accounts %}
+      <tr>
+        <td>{{ acct.name }}{% if acct.mask %} <span class="muted">••{{ acct.mask }}</span>{% endif %}
+          {% if acct.subtype %}<div class="muted small">{{ acct.subtype|category }}</div>{% endif %}</td>
+        <td class="nowrap inst">{{ acct.institution_name or '' }}</td>
+        {% if g.type == 'credit' %}
+        <td class="util">
+          {% if acct.pct is not none %}
+          {% set level = 'over' if acct.pct >= 30 else ('warn' if acct.pct >= 10 else 'ok') %}
+          <div class="progress thin {{ level }}"><div class="bar" style="width: {{ [[acct.pct, 0]|max, 100]|min }}%"></div></div>
+          <div class="muted small">{{ '%.0f'|format(acct.pct) }}% of {{ acct.limit|money }}</div>
+          {% else %}<span class="muted small">no limit reported</span>{% endif %}
+        </td>
+        {% else %}
+        <td class="num nowrap muted">{{ acct.available_balance|money if acct.available_balance is not none else '' }}</td>
+        {% endif %}
+        <td class="num nowrap">{{ acct.current_balance|money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% else %}
+<section class="card"><p class="muted">No accounts yet. Run a sync to pull balances from Plaid.</p></section>
+{% endfor %}
+{% endblock %}

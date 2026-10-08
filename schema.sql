@@ -20,9 +20,11 @@ CREATE TABLE IF NOT EXISTS accounts (
     subtype TEXT,
     current_balance NUMERIC(12, 2),
     available_balance NUMERIC(12, 2),
+    credit_limit NUMERIC(12, 2),
     iso_currency_code TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS credit_limit NUMERIC(12, 2);
 
 -- Store transaction ledger
 CREATE TABLE IF NOT EXISTS transactions (
