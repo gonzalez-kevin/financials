@@ -5,8 +5,9 @@ from decimal import Decimal
 
 # Plaid personal_finance_category.primary values that are money movement, not spending.
 # Credit-card payments show up as LOAN_PAYMENTS / TRANSFER_OUT on the checking side and
-# would otherwise double-count purchases already recorded on the card.
-DEFAULT_EXCLUDED_CATEGORIES = ('INCOME', 'TRANSFER_IN', 'TRANSFER_OUT', 'LOAN_PAYMENTS', 'OTHER', 'LOAN_PAYMENTS')
+# would otherwise double-count purchases already recorded on the card. Loan disbursements are
+# borrowed money coming in, not refunds.
+DEFAULT_EXCLUDED_CATEGORIES = ('INCOME', 'TRANSFER_IN', 'TRANSFER_OUT', 'LOAN_PAYMENTS', 'LOAN_DISBURSEMENTS', 'OTHER')
 
 DAY_NAMES = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')
 
