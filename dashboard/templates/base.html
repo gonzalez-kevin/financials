@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Spending{% endblock %} · Financials</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="{{ url_for('index') }}">Financials</a>
     <nav>
       <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Overview</a>
+      <a href="{{ url_for('monthly') }}" class="{{ 'active' if request.endpoint == 'monthly' }}">Monthly</a>
       <a href="{{ url_for('transactions') }}" class="{{ 'active' if request.endpoint == 'transactions' }}">Transactions</a>
       <a href="{{ url_for('accounts') }}" class="{{ 'active' if request.endpoint == 'accounts' }}">Accounts</a>
       <a href="{{ url_for('export') }}" class="{{ 'active' if request.endpoint == 'export' }}">Export</a>

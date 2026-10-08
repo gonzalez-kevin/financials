@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}Monthly{% endblock %}
+{% block head %}<script src="{{ url_for('static', filename='vendor/chart-4.4.1.umd.min.js') }}" defer></script>{% endblock %}
+{% block content %}
+<div class="week-nav">
+  <div class="week-label">
+    <strong>{{ m.months[0].strftime('%b %Y') }} – {{ m.months[-1].strftime('%b %Y') }}</strong>
+    <span class="pill">Last {{ m.months|length }} months</span>
+  </div>
+</div>
+
+<section class="stats">
+  <div class="card stat">
+    <div class="label">12-month spend</div>
+    <div class="value">{{ m.total|money }}</div>
+    <div class="muted small">net of refunds</div>
+  </div>
+  <div class="card stat">
+    <div class="label">Average month</div>
+    <div class="value">{{ full_avg|money }}</div>
+    <div class="muted small">previous {{ m.months|length - 1 }} full months</div>
+  </div>
+  <div class="card stat">
+    <div class="label">This month so far</div>
+    <div class="value">{{ m.totals[-1]|money }}</div>
+    <div class="muted small">{{ this_month.strftime('%B') }} to date</div>
+  </div>
+</section>
+
+{% if m.series %}
+<section class="card">
+  <h3>Spending by category per month</h3>
+  <div class="legend" id="legend"></div>
+  <div class="chart tall"><canvas id="by-month" role="img" aria-label="Stacked bar chart of monthly spending by category; the table below has the same numbers."></canvas></div>
+</section>
+
+<section class="card">
+  <h3>12-month total by category</h3>
+  <div class="chart" style="height: {{ 60 + m.series|length * 34 }}px"><canvas id="by-category" role="img" aria-label="Bar chart of 12-month spending per category."></canvas></div>
+</section>
+
+<section class="card">
+  <h3>Monthly table</h3>
+  <div class="table-scroll">
+    <table class="tx">
+      <thead><tr><th>Month</th>{% for s in m.series %}<th class="num">{{ s.category|category }}</th>{% endfor %}<th class="num">Total</th></tr></thead>
+      <tbody>
+        {% for month in m.months %}{% set i = loop.index0 %}
+        <tr>
+          <td class="nowrap">{{ month.strftime('%b %Y') }}{% if month == this_month %} <span class="pill small">so far</span>{% endif %}</td>
+          {% for s in m.series %}<td class="num">{{ s.amounts[i]|money }}</td>{% endfor %}
+          <td class="num"><strong>{{ m.totals[i]|money }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><td><strong>Total</strong></td>{% for s in m.series %}<td class="num"><strong>{{ s.total|money }}</strong></td>{% endfor %}<td class="num"><strong>{{ m.total|money }}</strong></td></tr></tfoot>
+    </table>
+  </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const data = {{ chart|tojson }};
+  // Categorical slots validated for CVD separation and contrast on the dark card surface; "All other" is gray.
+  const PALETTE = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9'];
+  const OTHER = '#6b7180', SURFACE = '#181b22', MUTED = '#8b92a1', GRID = '#262a33';
+  const color = (s, i) => s.other ? OTHER : PALETTE[i % PALETTE.length];
+  const fmt = v => (v < 0 ? '-' : '') + '$' + Math.abs(v).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const fmtShort = v => '$' + Math.round(v).toLocaleString('en-US');
+
+  Chart.defaults.color = MUTED;
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  const tooltip = {backgroundColor: '#0f1115', borderColor: GRID, borderWidth: 1, titleColor: '#e7e9ee',
+                   bodyColor: '#e7e9ee', padding: 10, boxPadding: 4};
+
+  data.series.forEach((s, i) => {
+    const item = document.createElement('span'), swatch = document.createElement('i');
+    swatch.style.background = color(s, i);
+    item.append(swatch, s.label);
+    document.getElementById('legend').append(item);
+  });
+
+  new Chart(document.getElementById('by-month'), {
+    type: 'bar',
+    data: {labels: data.labels, datasets: data.series.map((s, i) => ({
+      label: s.label, data: s.data.map(Number), backgroundColor: color(s, i),
+      borderColor: SURFACE, borderWidth: {top: 2}, borderSkipped: 'bottom', maxBarThickness: 46,
+    }))},
+    options: {
+      maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {...tooltip,
+        itemSort: (a, b) => b.raw - a.raw,
+        filter: item => item.raw !== 0,
+        callbacks: {title: items => items[0].label + (items[0].dataIndex === data.labels.length - 1 ? ' (so far)' : ''),
+                    label: c => ` ${c.dataset.label}: ${fmt(c.raw)}`,
+                    footer: items => 'Total: ' + fmt(Number(data.totals[items[0].dataIndex]))}}},
+      scales: {
+        x: {stacked: true, grid: {display: false}, border: {color: GRID}, ticks: {maxRotation: 0}},
+        y: {stacked: true, grid: {color: GRID}, border: {display: false}, ticks: {callback: fmtShort}},
+      },
+    },
+  });
+
+  new Chart(document.getElementById('by-category'), {
+    type: 'bar',
+    data: {labels: data.series.map(s => s.label), datasets: [{
+      data: data.series.map(s => Number(s.total)), backgroundColor: data.series.map(color),
+      borderRadius: 4, borderSkipped: 'start', barThickness: 18,
+    }]},
+    options: {
+      indexAxis: 'y', maintainAspectRatio: false,
+      plugins: {legend: {display: false}, tooltip: {...tooltip, callbacks: {label: c => ' ' + fmt(c.raw)}}},
+      scales: {
+        x: {grid: {color: GRID}, border: {display: false}, ticks: {callback: fmtShort}},
+        y: {grid: {display: false}, border: {color: GRID}, ticks: {color: '#e7e9ee'}},
+      },
+    },
+  });
+});
+</script>
+{% else %}
+<section class="card"><p class="muted">No spending in the last {{ m.months|length }} months.</p></section>
+{% endif %}
+{% endblock %}

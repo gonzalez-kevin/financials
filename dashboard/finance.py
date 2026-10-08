@@ -111,6 +111,50 @@ def weekly_totals(transactions, starts, excluded=DEFAULT_EXCLUDED_CATEGORIES):
     return [{'start': s, 'total': totals[s]} for s in starts]
 
 
+OTHER_SPEND = 'ALL_OTHER'
+
+
+def month_start(d: date) -> date:
+    return d.replace(day=1)
+
+
+def add_months(d: date, n: int) -> date:
+    """First of the month ``n`` months after (or before, if negative) ``d``'s month."""
+    y, m = divmod(d.year * 12 + d.month - 1 + n, 12)
+    return date(y, m + 1, 1)
+
+
+def monthly_by_category(transactions, months, excluded=DEFAULT_EXCLUDED_CATEGORIES, top_n: int = 7) -> dict:
+    """Net spend per category per month for each month start in ``months``.
+
+    The ``top_n`` categories by total keep their own series; the rest fold into ``OTHER_SPEND``.
+    """
+    index = {m: i for i, m in enumerate(months)}
+    by_cat = defaultdict(lambda: [Decimal('0')] * len(months))
+    for t in transactions:
+        i = index.get(month_start(t['date']))
+        if i is None or not counts_toward_budget(t, excluded):
+            continue
+        by_cat[t.get('category_primary') or 'UNCATEGORIZED'][i] += Decimal(t['amount'])
+
+    ranked = sorted(by_cat.items(), key=lambda kv: sum(kv[1]), reverse=True)
+    top = [(c, v) for c, v in ranked if sum(v) > 0][:top_n]
+    rest = [v for c, v in ranked if c not in dict(top)]
+    series = list(top)
+    if rest:
+        series.append((OTHER_SPEND, [sum(col, Decimal('0')) for col in zip(*rest)]))
+
+    totals = [sum(col, Decimal('0')) for col in zip(*by_cat.values())] if by_cat else [Decimal('0')] * len(months)
+    total = sum(totals, Decimal('0'))
+    return {
+        'months': list(months),
+        'series': [{'category': c, 'amounts': v, 'total': sum(v, Decimal('0'))} for c, v in series],
+        'totals': totals,
+        'total': total,
+        'average': total / len(months) if months else Decimal('0'),
+    }
+
+
 # Plaid account types: depository/investment balances are assets; credit/loan balances are amounts owed.
 ACCOUNT_GROUPS = (('depository', 'Cash'), ('investment', 'Investments'), ('credit', 'Credit cards'),
                   ('loan', 'Loans'), ('other', 'Other'))

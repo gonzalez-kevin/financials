@@ -25,8 +25,8 @@ sys.path.insert(0, str(ROOT))
 
 import main as sync  # noqa: E402  (reuses DB connection + Plaid sync logic)
 from dashboard.finance import (  # noqa: E402
-    DEFAULT_EXCLUDED_CATEGORIES, counts_toward_budget, summarize_accounts, summarize_week,
-    week_end, week_start, weekly_totals,
+    DEFAULT_EXCLUDED_CATEGORIES, OTHER_SPEND, add_months, counts_toward_budget, month_start,
+    monthly_by_category, summarize_accounts, summarize_week, week_end, week_start, weekly_totals,
 )
 
 WEEKLY_BUDGET = Decimal(os.getenv('WEEKLY_BUDGET', '1200'))
@@ -35,6 +35,7 @@ EXCLUDED_CATEGORIES = tuple(
     if c.strip()
 )
 HISTORY_WEEKS = 8
+HISTORY_MONTHS = 12
 
 app = Flask(__name__)
 # Only used to sign flash messages. Set DASHBOARD_SECRET_KEY in production; the random
@@ -113,6 +114,8 @@ def money(value):
 
 @app.template_filter('category')
 def category_label(value):
+    if value == OTHER_SPEND:
+        return 'All other'
     return (value or 'Uncategorized').replace('_', ' ').capitalize()
 
 
@@ -161,6 +164,23 @@ def transactions():
         prev_week=start - timedelta(weeks=1), next_week=start + timedelta(weeks=1),
         is_current=start == week_start(today),
     )
+
+
+@app.route('/monthly')
+def monthly():
+    today = date.today()
+    first = add_months(today, -(HISTORY_MONTHS - 1))
+    months = [add_months(first, i) for i in range(HISTORY_MONTHS)]
+    m = monthly_by_category(fetch_transactions(first, today), months, EXCLUDED_CATEGORIES)
+    chart = {
+        'labels': [d.strftime("%b '%y") for d in months],
+        'series': [{'label': category_label(s['category']), 'other': s['category'] == OTHER_SPEND,
+                    'data': [str(a) for a in s['amounts']], 'total': str(s['total'])} for s in m['series']],
+        'totals': [str(t) for t in m['totals']],
+    }
+    full = m['totals'][:-1]
+    return render_template('monthly.html', m=m, chart=chart, this_month=month_start(today),
+                           full_avg=sum(full, Decimal('0')) / len(full) if full else Decimal('0'))
 
 
 @app.route('/export')

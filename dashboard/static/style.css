@@ -104,6 +104,13 @@ table.tx { width: 100%; border-collapse: collapse; }
   border-radius: 8px; padding: 7px 10px; font: inherit; color-scheme: dark; }
 .presets { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
+.chart { position: relative; height: 240px; }
+.chart.tall { height: 340px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; margin-bottom: 12px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.table-scroll { overflow-x: auto; }
+.tx tfoot td { border-bottom: 0; }
+.table-scroll .tx td, .table-scroll .tx th { padding-left: 6px; padding-right: 6px; white-space: nowrap; }
 .progress.thin { height: 8px; margin: 6px 0; }
 .progress.warn .bar { background: var(--warn); }
 .progress.over .bar { background: var(--over); }
