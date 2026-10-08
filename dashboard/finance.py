@@ -161,53 +161,29 @@ ACCOUNT_GROUPS = (('depository', 'Cash'), ('investment', 'Investments'), ('credi
 LIABILITY_TYPES = ('credit', 'loan')
 
 
-def _dec(value):
-    return Decimal(value) if value is not None else None
-
-
-def credit_limit(acct: dict):
-    """Card limit from Plaid, else inferred as owed + available (Plaid omits the limit for some issuers)."""
-    limit = _dec(acct.get('credit_limit'))
-    if limit is None and acct.get('available_balance') is not None:
-        limit = Decimal(acct.get('current_balance') or 0) + Decimal(acct['available_balance'])
-    return limit if limit else None
-
-
 def summarize_accounts(accounts) -> dict:
-    """Group accounts by type and compute net worth, cash vs credit, and credit utilization."""
+    """Group accounts by type and compute net worth and cash vs credit card balances."""
     known = {t for t, _ in ACCOUNT_GROUPS}
     groups = {t: [] for t, _ in ACCOUNT_GROUPS}
     for a in accounts:
         groups[a.get('type') if a.get('type') in known else 'other'].append(a)
 
-    def total(rows):
-        return sum((Decimal(a.get('current_balance') or 0) for a in rows), Decimal('0'))
+    def balance(a):
+        return Decimal(a.get('current_balance') or 0)
 
-    cards = []
-    for a in sorted(groups['credit'], key=lambda a: Decimal(a.get('current_balance') or 0), reverse=True):
-        owed, limit = Decimal(a.get('current_balance') or 0), credit_limit(a)
-        cards.append({**a, 'owed': owed, 'limit': limit,
-                      'pct': float(owed / limit * 100) if limit else None})
+    def total(rows):
+        return sum((balance(a) for a in rows), Decimal('0'))
 
     assets = sum((total(rows) for t, rows in groups.items() if t not in LIABILITY_TYPES), Decimal('0'))
     liabilities = sum((total(groups[t]) for t in LIABILITY_TYPES), Decimal('0'))
-    limited = [c for c in cards if c['limit']]
-    credit_used = sum((c['owed'] for c in limited), Decimal('0'))
-    credit_limit_total = sum((c['limit'] for c in limited), Decimal('0'))
-
     return {
         'groups': [{'type': t, 'label': label, 'total': total(groups[t]), 'liability': t in LIABILITY_TYPES,
-                    'accounts': cards if t == 'credit' else sorted(
-                        groups[t], key=lambda a: Decimal(a.get('current_balance') or 0), reverse=True)}
+                    'accounts': sorted(groups[t], key=balance, reverse=True)}
                    for t, label in ACCOUNT_GROUPS if groups[t]],
         'assets': assets,
         'liabilities': liabilities,
         'net_worth': assets - liabilities,
         'cash': total(groups['depository']),
         'credit_owed': total(groups['credit']),
-        'credit_used': credit_used,
-        'credit_limit': credit_limit_total,
-        'credit_available': credit_limit_total - credit_used,
-        'utilization': float(credit_used / credit_limit_total * 100) if credit_limit_total else None,
         'account_count': len(accounts),
     }

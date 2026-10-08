@@ -27,19 +27,13 @@
   <div class="card stat">
     <div class="label">Credit card balances</div>
     <div class="value neg">{{ a.credit_owed|money }}</div>
-    <div class="muted small">cash after paying cards: {{ (a.cash - a.credit_owed)|money }}</div>
+    <div class="muted small">owed across all cards</div>
   </div>
   <div class="card stat">
-    <div class="label">Credit used</div>
-    {% if a.utilization is not none %}
-    {% set level = 'over' if a.utilization >= 30 else ('warn' if a.utilization >= 10 else 'ok') %}
-    <div class="value">{{ '%.0f'|format(a.utilization) }}%</div>
-    <div class="progress thin {{ level }}"><div class="bar" style="width: {{ [a.utilization, 100]|min }}%"></div></div>
-    <div class="muted small">{{ a.credit_used|money }} of {{ a.credit_limit|money }} · {{ a.credit_available|money }} available</div>
-    {% else %}
-    <div class="value muted">n/a</div>
-    <div class="muted small">no credit limits reported</div>
-    {% endif %}
+    <div class="label">Cash after paying cards</div>
+    {% set after = a.cash - a.credit_owed %}
+    <div class="value {{ 'neg' if after < 0 }}">{{ after|money }}</div>
+    <div class="muted small">cash minus card balances</div>
   </div>
 </section>
 
@@ -52,7 +46,7 @@
   <div class="scroll-x"><table class="tx">
     <thead>
       <tr><th>Account</th><th class="inst">Institution</th>
-        {% if g.type == 'credit' %}<th>Credit used</th>{% else %}<th class="num">Available</th>{% endif %}
+        {% if g.type != 'credit' %}<th class="num">Available</th>{% endif %}
         <th class="num">{{ 'Owed' if g.liability else 'Balance' }}</th></tr>
     </thead>
     <tbody>
@@ -61,15 +55,7 @@
         <td>{{ acct.name }}{% if acct.mask %} <span class="muted">••{{ acct.mask }}</span>{% endif %}
           {% if acct.subtype %}<div class="muted small">{{ acct.subtype|category }}</div>{% endif %}</td>
         <td class="nowrap inst">{{ acct.institution_name or '' }}</td>
-        {% if g.type == 'credit' %}
-        <td class="util">
-          {% if acct.pct is not none %}
-          {% set level = 'over' if acct.pct >= 30 else ('warn' if acct.pct >= 10 else 'ok') %}
-          <div class="progress thin {{ level }}"><div class="bar" style="width: {{ [[acct.pct, 0]|max, 100]|min }}%"></div></div>
-          <div class="muted small">{{ '%.0f'|format(acct.pct) }}% of {{ acct.limit|money }}</div>
-          {% else %}<span class="muted small">no limit reported</span>{% endif %}
-        </td>
-        {% else %}
+        {% if g.type != 'credit' %}
         <td class="num nowrap muted">{{ acct.available_balance|money if acct.available_balance is not none else '' }}</td>
         {% endif %}
         <td class="num nowrap">{{ acct.current_balance|money }}</td>
