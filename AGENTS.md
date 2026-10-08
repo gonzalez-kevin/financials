@@ -63,7 +63,8 @@ served by gunicorn in Docker.
 - `Dockerfile`: `python:3.12-slim` with `TZ=America/Los_Angeles`. It installs the deps from
   `pyproject.toml` and copies **only** `main.py`, `dashboard/` and `jobs/`. Its default CMD is gunicorn
   `dashboard.app:app`.
-- `.idea/`, `__pycache__/` and `.venv/` are IDE and runtime artifacts; ignore them.
+- `.github/workflows/tests.yml`: GitHub Actions runs the unittest suite on Python 3.12 for pushes to `main` and PRs.
+- `.idea/`, `__pycache__/` and `.venv/` are IDE and runtime artifacts. They are git-ignored; ignore them.
 
 ## Deployment
 There is no deploy script; everything is set up manually in the Google Cloud Console (region `us-west1`).
