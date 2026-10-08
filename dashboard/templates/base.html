@@ -14,6 +14,7 @@
       <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Overview</a>
       <a href="{{ url_for('monthly') }}" class="{{ 'active' if request.endpoint == 'monthly' }}">Monthly</a>
       <a href="{{ url_for('transactions') }}" class="{{ 'active' if request.endpoint == 'transactions' }}">Transactions</a>
+      <a href="{{ url_for('accounts') }}" class="{{ 'active' if request.endpoint == 'accounts' }}">Accounts</a>
       <a href="{{ url_for('export') }}" class="{{ 'active' if request.endpoint == 'export' }}">Export</a>
     </nav>
     <form method="post" action="{{ url_for('run_sync') }}" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Syncing…'">

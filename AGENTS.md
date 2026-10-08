@@ -25,7 +25,8 @@ served by gunicorn in Docker.
   - `main() -> list[str]` returns error messages, and an empty list means success. Items are **hardcoded**:
     Amex (`AMEX_ITEM_ID` / `AMEX_ACCESS_TOKEN`) and Chase (`CHASE_ITEM_ID` / `CHASE_ACCESS_TOKEN`).
 - `schema.sql`: tables `plaid_items(id, institution_name, access_token, next_cursor, …)`,
-  `accounts(id, item_id→plaid_items, name, mask, type, subtype, balances, …)` and
+  `accounts(id, item_id→plaid_items, name, mask, type, subtype, current_balance, available_balance,
+  credit_limit, …)` and
   `transactions(id, account_id→accounts, amount, date, datetime, name, merchant_name, category_primary,
   category_detailed, payment_channel, pending, iso_currency_code, …)`.
 - `dashboard/finance.py`: **pure functions** with no Flask or DB code, so it is easy to test.
@@ -34,8 +35,8 @@ served by gunicorn in Docker.
   - `summarize_week(txs, start, today, budget, excluded)` returns a dict with total, remaining, pct, daily,
     categories, merchants, top expenses, projection and related fields.
   - `weekly_totals`.
-  - `month_start`, `add_months` and `monthly_by_category(txs, months, excluded, top_n=7)`, which returns
-    per-category monthly series (smaller categories fold into `OTHER_SPEND`), monthly totals and an average.
+  - `summarize_accounts(accounts)` groups accounts by Plaid type and returns net worth, cash, credit owed and
+    credit utilization. `credit_limit(acct)` falls back to owed + available when Plaid omits the limit.
   - `DEFAULT_EXCLUDED_CATEGORIES`, which lists Plaid PFC primary values for money movement such as
     transfers, loan payments, income and `OTHER`.
 - `dashboard/app.py`: the Flask `app`.
@@ -49,11 +50,10 @@ served by gunicorn in Docker.
     - `/monthly`: the last 12 months by category, with Chart.js charts and a table
     - `/transactions` (`?week=`, `?all=1`)
     - `/export` (a form, or `?start=&end=` returns CSV)
+    - `/accounts` (balances per account, net worth, credit used vs limit)
     - `POST /sync`, which calls `sync.main()` and flashes the result
-- `dashboard/templates/`: `base.html` (has a `head` block for page scripts), `index.html`, `monthly.html`,
-  `transactions.html`, `export.html`, and the shared partial `_week_nav.html`. CSS is in
-  `dashboard/static/style.css`. Chart.js 4.4.1 is vendored at `dashboard/static/vendor/` (no CDN), so any page
-  can load it via `{% block head %}`.
+- `dashboard/templates/`: `base.html`, `index.html`, `transactions.html`, `accounts.html`, `export.html`, and the shared
+  partial `_week_nav.html`. CSS is in `dashboard/static/style.css`.
 - `jobs/daily.py`: reports on **yesterday** plus week-to-date.
   - It reuses `fetch_transactions`, `money`, `category_label`, `WEEKLY_BUDGET` and `EXCLUDED_CATEGORIES`
     from `dashboard.app`.
@@ -69,7 +69,8 @@ served by gunicorn in Docker.
 - `Dockerfile`: `python:3.12-slim` with `TZ=America/Los_Angeles`. It installs the deps from
   `pyproject.toml` and copies **only** `main.py`, `dashboard/` and `jobs/`. Its default CMD is gunicorn
   `dashboard.app:app`.
-- `.idea/`, `__pycache__/` and `.venv/` are IDE and runtime artifacts; ignore them.
+- `.github/workflows/tests.yml`: GitHub Actions runs the unittest suite on Python 3.12 for pushes to `main` and PRs.
+- `.idea/`, `__pycache__/` and `.venv/` are IDE and runtime artifacts. They are git-ignored; ignore them.
 
 ## Deployment
 There is no deploy script; everything is set up manually in the Google Cloud Console (region `us-west1`).

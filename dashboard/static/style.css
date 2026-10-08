@@ -111,3 +111,10 @@ table.tx { width: 100%; border-collapse: collapse; }
 .table-scroll { overflow-x: auto; }
 .tx tfoot td { border-bottom: 0; }
 .table-scroll .tx td, .table-scroll .tx th { padding-left: 6px; padding-right: 6px; white-space: nowrap; }
+.progress.thin { height: 8px; margin: 6px 0; }
+.progress.warn .bar { background: var(--warn); }
+.progress.over .bar { background: var(--over); }
+.tx td.util { min-width: 160px; }
+.net-worth .hero-top { flex-wrap: wrap; }
+.scroll-x { overflow-x: auto; }
+@media (max-width: 600px) { .tx .inst { display: none; } .tx td.util { min-width: 110px; } }

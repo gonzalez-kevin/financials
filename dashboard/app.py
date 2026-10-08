@@ -13,6 +13,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+import psycopg2.errors
 import psycopg2.extras
 from dotenv import load_dotenv
 from flask import Flask, Response, flash, redirect, render_template, request, url_for
@@ -24,8 +25,8 @@ sys.path.insert(0, str(ROOT))
 
 import main as sync  # noqa: E402  (reuses DB connection + Plaid sync logic)
 from dashboard.finance import (  # noqa: E402
-    DEFAULT_EXCLUDED_CATEGORIES, OTHER_SPEND, add_months, counts_toward_budget, month_start,
-    monthly_by_category, summarize_week, week_end, week_start, weekly_totals,
+    DEFAULT_EXCLUDED_CATEGORIES, counts_toward_budget, summarize_accounts, summarize_week,
+    week_end, week_start, weekly_totals,
 )
 
 WEEKLY_BUDGET = Decimal(os.getenv('WEEKLY_BUDGET', '1200'))
@@ -59,6 +60,28 @@ def fetch_transactions(start: date, end: date):
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(TX_SQL, (start, end))
+            return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+ACCOUNTS_SQL = """
+    SELECT a.id, a.name, a.mask, a.type, a.subtype, a.current_balance, a.available_balance,
+           a.credit_limit, a.iso_currency_code, a.updated_at, p.institution_name
+    FROM accounts a
+    LEFT JOIN plaid_items p ON p.id = a.item_id
+    ORDER BY p.institution_name, a.name
+"""
+
+
+def fetch_accounts():
+    conn = sync.get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            try:
+                cur.execute(ACCOUNTS_SQL)
+            except psycopg2.errors.UndefinedColumn:  # credit_limit is added by the next sync
+                conn.rollback()
+                cur.execute(ACCOUNTS_SQL.replace('a.credit_limit', 'NULL AS credit_limit'))
             return [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
@@ -187,6 +210,12 @@ def export():
     filename = f"transactions_{start.isoformat()}_to_{end.isoformat()}.csv"
     return Response(buf.getvalue(), mimetype='text/csv',
                     headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+
+
+@app.route('/accounts')
+def accounts():
+    accts = fetch_accounts()
+    return render_template('accounts.html', a=summarize_accounts(accts), last_synced=last_synced())
 
 
 @app.route('/sync', methods=['POST'])
