@@ -34,20 +34,26 @@ served by gunicorn in Docker.
   - `summarize_week(txs, start, today, budget, excluded)` returns a dict with total, remaining, pct, daily,
     categories, merchants, top expenses, projection and related fields.
   - `weekly_totals`.
+  - `month_start`, `add_months` and `monthly_by_category(txs, months, excluded, top_n=7)`, which returns
+    per-category monthly series (smaller categories fold into `OTHER_SPEND`), monthly totals and an average.
   - `DEFAULT_EXCLUDED_CATEGORIES`, which lists Plaid PFC primary values for money movement such as
     transfers, loan payments, income and `OTHER`.
 - `dashboard/app.py`: the Flask `app`.
-  - Config: `WEEKLY_BUDGET` (default 1200), `EXCLUDED_CATEGORIES` (env CSV) and `HISTORY_WEEKS = 8`.
+  - Config: `WEEKLY_BUDGET` (default 1200), `EXCLUDED_CATEGORIES` (env CSV), `HISTORY_WEEKS = 8` and
+    `HISTORY_MONTHS = 12`.
   - `fetch_transactions(start, end)` joins transactions, accounts and plaid_items and returns a list of
     dicts, using `RealDictCursor`.
   - Jinja filters: `money` and `category`. Context globals: `counts(t)` and `today`.
   - Routes:
     - `/` (`?week=YYYY-MM-DD`)
+    - `/monthly`: the last 12 months by category, with Chart.js charts and a table
     - `/transactions` (`?week=`, `?all=1`)
     - `/export` (a form, or `?start=&end=` returns CSV)
     - `POST /sync`, which calls `sync.main()` and flashes the result
-- `dashboard/templates/`: `base.html`, `index.html`, `transactions.html`, `export.html`, and the shared
-  partial `_week_nav.html`. CSS is in `dashboard/static/style.css`.
+- `dashboard/templates/`: `base.html` (has a `head` block for page scripts), `index.html`, `monthly.html`,
+  `transactions.html`, `export.html`, and the shared partial `_week_nav.html`. CSS is in
+  `dashboard/static/style.css`. Chart.js 4.4.1 is vendored at `dashboard/static/vendor/` (no CDN), so any page
+  can load it via `{% block head %}`.
 - `jobs/daily.py`: reports on **yesterday** plus week-to-date.
   - It reuses `fetch_transactions`, `money`, `category_label`, `WEEKLY_BUDGET` and `EXCLUDED_CATEGORIES`
     from `dashboard.app`.
@@ -78,7 +84,7 @@ There is no deploy script; everything is set up manually in the Google Cloud Con
 
 ## Commands (run from repo root)
 ```bash
-.venv/bin/python -m unittest dashboard.test_finance jobs.test_daily   # tests: 10, no DB/network needed
+.venv/bin/python -m unittest dashboard.test_finance jobs.test_daily   # tests: 14, no DB/network needed
 .venv/bin/python main.py                                              # sync
 .venv/bin/python -m dashboard.app                                     # http://127.0.0.1:5050
 .venv/bin/python -m jobs.daily --dry-run                              # print email

@@ -2,7 +2,9 @@ import unittest
 from datetime import date
 from decimal import Decimal
 
-from dashboard.finance import summarize_week, week_start, weekly_totals
+from dashboard.finance import (
+    OTHER_SPEND, add_months, monthly_by_category, summarize_week, week_start, weekly_totals,
+)
 
 
 def tx(d, amount, cat='FOOD_AND_DRINK', name='Shop', merchant=None):
@@ -62,6 +64,42 @@ class SummarizeWeekTest(unittest.TestCase):
         txs = [tx(date(2026, 9, 26), 10), tx(date(2026, 9, 27), 20), tx(date(2026, 9, 30), 5, cat='TRANSFER_OUT')]
         res = weekly_totals(txs, [date(2026, 9, 20), date(2026, 9, 27)])
         self.assertEqual([r['total'] for r in res], [Decimal('10'), Decimal('20')])
+
+
+class MonthlyTest(unittest.TestCase):
+    def test_add_months_wraps_years(self):
+        self.assertEqual(add_months(date(2026, 10, 8), -11), date(2025, 11, 1))
+        self.assertEqual(add_months(date(2026, 12, 31), 1), date(2027, 1, 1))
+        self.assertEqual(add_months(date(2026, 1, 15), 0), date(2026, 1, 1))
+
+    def test_monthly_by_category_nets_and_excludes(self):
+        months = [date(2026, 8, 1), date(2026, 9, 1), date(2026, 10, 1)]
+        txs = [
+            tx(date(2026, 8, 31), 100),
+            tx(date(2026, 9, 1), 40),
+            tx(date(2026, 9, 2), -10),                       # refund
+            tx(date(2026, 9, 3), 60, cat='ENTERTAINMENT'),
+            tx(date(2026, 10, 1), 900, cat='LOAN_PAYMENTS'),  # card payment
+            tx(date(2026, 7, 31), 500),                      # outside range
+        ]
+        m = monthly_by_category(txs, months)
+        self.assertEqual([s['category'] for s in m['series']], ['FOOD_AND_DRINK', 'ENTERTAINMENT'])
+        self.assertEqual(m['series'][0]['amounts'], [Decimal('100'), Decimal('30'), Decimal('0')])
+        self.assertEqual(m['totals'], [Decimal('100'), Decimal('90'), Decimal('0')])
+        self.assertEqual(m['total'], Decimal('190'))
+
+    def test_small_categories_fold_into_other(self):
+        months = [date(2026, 9, 1)]
+        txs = [tx(date(2026, 9, 5), 30, cat='A'), tx(date(2026, 9, 5), 20, cat='B'), tx(date(2026, 9, 5), 5, cat='C')]
+        m = monthly_by_category(txs, months, top_n=1)
+        self.assertEqual([(s['category'], s['total']) for s in m['series']],
+                         [('A', Decimal('30')), (OTHER_SPEND, Decimal('25'))])
+        self.assertEqual(m['totals'], [Decimal('55')])
+
+    def test_empty(self):
+        m = monthly_by_category([], [date(2026, 9, 1), date(2026, 10, 1)])
+        self.assertEqual(m['series'], [])
+        self.assertEqual(m['totals'], [Decimal('0'), Decimal('0')])
 
 
 if __name__ == '__main__':
