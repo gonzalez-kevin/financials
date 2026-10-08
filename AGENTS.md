@@ -37,8 +37,8 @@ served by gunicorn in Docker.
   - `weekly_totals`.
   - `month_start`, `add_months` and `monthly_by_category(txs, months, excluded, top_n=7)`, which returns
     per-category monthly series (smaller categories fold into `OTHER_SPEND`), monthly totals and an average.
-  - `summarize_accounts(accounts)` groups accounts by Plaid type and returns net worth, cash, credit owed and
-    credit utilization. `credit_limit(acct)` falls back to owed + available when Plaid omits the limit.
+  - `summarize_accounts(accounts)` groups accounts by Plaid type and returns net worth, cash and credit card
+    balances owed. Limits and utilization are deliberately not shown (some cards have no hard limit).
   - `DEFAULT_EXCLUDED_CATEGORIES`, which lists Plaid PFC primary values for money movement such as
     transfers, loan payments, income and `OTHER`.
 - `dashboard/app.py`: the Flask `app`.
@@ -52,7 +52,7 @@ served by gunicorn in Docker.
     - `/monthly`: the last 12 months by category, with Chart.js charts and a table
     - `/transactions` (`?week=`, `?all=1`)
     - `/export` (a form, or `?start=&end=` returns CSV)
-    - `/accounts` (balances per account, net worth, credit used vs limit)
+    - `/accounts` (balances per account, net worth, cash vs card balances)
     - `POST /sync`, which calls `sync.main()` and flashes the result
 - `dashboard/templates/`: `base.html` (has a `head` block for page scripts), `index.html`, `monthly.html`,
   `transactions.html`, `accounts.html`, `export.html`, and the shared partial `_week_nav.html`. CSS is in
@@ -89,7 +89,7 @@ There is no deploy script; everything is set up manually in the Google Cloud Con
 
 ## Commands (run from repo root)
 ```bash
-.venv/bin/python -m unittest dashboard.test_finance jobs.test_daily   # tests: 18, no DB/network needed
+.venv/bin/python -m unittest dashboard.test_finance jobs.test_daily   # tests: 16, no DB/network needed
 .venv/bin/python main.py                                              # sync
 .venv/bin/python -m dashboard.app                                     # http://127.0.0.1:5050
 .venv/bin/python -m jobs.daily --dry-run                              # print email

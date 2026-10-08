@@ -13,7 +13,6 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
-import psycopg2.errors
 import psycopg2.extras
 from dotenv import load_dotenv
 from flask import Flask, Response, flash, redirect, render_template, request, url_for
@@ -64,9 +63,10 @@ def fetch_transactions(start: date, end: date):
     finally:
         conn.close()
 
+
 ACCOUNTS_SQL = """
     SELECT a.id, a.name, a.mask, a.type, a.subtype, a.current_balance, a.available_balance,
-           a.credit_limit, a.iso_currency_code, a.updated_at, p.institution_name
+           a.iso_currency_code, a.updated_at, p.institution_name
     FROM accounts a
     LEFT JOIN plaid_items p ON p.id = a.item_id
     ORDER BY p.institution_name, a.name
@@ -77,11 +77,7 @@ def fetch_accounts():
     conn = sync.get_db_connection()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            try:
-                cur.execute(ACCOUNTS_SQL)
-            except psycopg2.errors.UndefinedColumn:  # credit_limit is added by the next sync
-                conn.rollback()
-                cur.execute(ACCOUNTS_SQL.replace('a.credit_limit', 'NULL AS credit_limit'))
+            cur.execute(ACCOUNTS_SQL)
             return [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
